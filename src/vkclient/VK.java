@@ -8,7 +8,6 @@ import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.util.Pair;
-import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -16,8 +15,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import org.stringtree.json.JSONReader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -26,13 +24,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.
 /**
  *
  * @author timur
@@ -49,6 +47,18 @@ class VK {
             "display=popup&" + // page, popup, mobile
             // "v=5.27&" +
             "response_type=token";
+
+    private static final String[] USER_INFO_FIELDS_ALL = {
+            "sex", "bdate", "city", "country", "photo_50", "photo_100",
+            "photo_200_orig", "photo_200", "photo_400_orig", "photo_max", "photo_max_orig",
+            "photo_id", "online", "online_mobile", "domain" , "has_mobile", "contacts",
+            "connections", "site", "education", "universities", "schools", "can_post",
+            "can_see_all_posts", "can_see_audio", "can_write_private_message", "status", "last_seen",
+            "common_count", "relation", "relatives", "counters", "screen_name", "maiden_name", "timezone",
+            "occupation", "activities", "interests", "music", "movies", "tv", "books",
+            "games", "about", "quotes", "personal"};
+
+    public static final String API_URL = "https://api.vk.com/method/";
 
     private static VK instance = null;
 
@@ -205,11 +215,6 @@ class VK {
                 System.exit(0);
             }
 
-//https://oauth.vk.com/blank.html#
-// access_token=5b0467a551102804ff90beec730312770a2cdf5743ba9e0b6924a70ed297987bfc245d5d275ff387aa22e
-// &expires_in=86400
-// &user_id=9756019
-
             accessToken = HeaderLocation.split("#")[1].split("&")[0].split("=")[1];
             userId = HeaderLocation.split("#")[1].split("&")[2].split("=")[1];
         } catch (Exception ex) {
@@ -217,49 +222,17 @@ class VK {
         }
     }
 
-    public String getNewMessage() throws ClientProtocolException, IOException, NoSuchAlgorithmException, URISyntaxException {
-//        String url = "https://api.vk.com/method/" +
-//                "messages.get" +
-//                "?out=0" +
-//                "&access_token=" + accessToken
-//                ;
-
-        String url = "https://api.vk.com/method/" +
-                "audio.get" +
-                "?access_token=" + accessToken;
-
-        String line = "";
-
-        try {
-            URL url2 = new URL(url);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(url2.openStream()));
-            line = reader.readLine();
-            reader.close();
-
-        } catch (Exception e) {
-            // ...
-        }
-
-        return line;
-    }
-
-    // public List<Map<String, String>> getUserInfo() {
-    public String getUserInfo() {
+    public String vkApiRequest(String method, Map<String, String> params) {
         if (accessToken.isEmpty()) {
             return null;
         }
 
-        String fields = "sex,bdate,city,country,photo_50,photo_100,photo_200_orig,photo_200," +
-                "photo_400_orig,photo_max,photo_max_orig,photo_id,online,online_mobile,domain," +
-                "has_mobile,contacts,connections,site,education,universities,schools,can_post," +
-                "can_see_all_posts,can_see_audio,can_write_private_message,status,last_seen," +
-                "common_count,relation,relatives,counters,screen_name,maiden_name,timezone," +
-                "occupation,activities,interests,music,movies,tv,books,games,about,quotes,personal";
+        String paramsString = "";
 
-        String url = "https://api.vk.com/method/" +
-                "users.get?" +
-                "uids=" + userId +
-                "&fields=" + fields +
+        // TODO
+
+        String url = API_URL + method + "?" +
+                paramsString +
                 "&access_token=" + accessToken;
 
         try {
@@ -267,8 +240,6 @@ class VK {
             BufferedReader reader = new BufferedReader(new InputStreamReader(url2.openStream()));
             String line = reader.readLine();
             reader.close();
-
-
 
             return line;
 
@@ -278,4 +249,27 @@ class VK {
 
         return null;
     }
+
+    public List<Map<String, String>> getUsersInfo(String[] uids, String[] fields) {
+        if (fields == null || fields.length == 0) {
+            fields = USER_INFO_FIELDS_ALL;
+        }
+
+        Map<String, String> params = new HashMap<>();
+
+        params.put("uids", String.join(",", uids));
+        params.put("fields", String.join(",", fields));
+
+        JSONReader jsonReader = new JSONReader();
+
+        Object result = jsonReader.read(vkApiRequest("users.get", params));
+
+        return (List) ((Map) result).get("response");
+    }
+
+    public Map<String, String> getCurrentUserInfo() {
+        return getUsersInfo(new String[]{userId}, USER_INFO_FIELDS_ALL).get(0);
+    }
+
+
 }
