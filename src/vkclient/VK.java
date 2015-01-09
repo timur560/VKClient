@@ -1,6 +1,7 @@
 package vkclient;
 
 
+import com.sun.deploy.util.StringUtils;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -24,12 +25,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -56,7 +55,15 @@ class VK {
             "can_see_all_posts", "can_see_audio", "can_write_private_message", "status", "last_seen",
             "common_count", "relation", "relatives", "counters", "screen_name", "maiden_name", "timezone",
             "occupation", "activities", "interests", "music", "movies", "tv", "books",
-            "games", "about", "quotes", "personal"};
+            "games", "about", "quotes", "personal"
+    };
+
+    private static final String[] FRIENDS_FIELDS_ALL = {
+            "nickname", "domain", "sex", "bdate", "city", "country", "timezone", "photo_50",
+            "photo_100", "photo_200_orig", "has_mobile", "contacts", "education", "online",
+            "relation", "last_seen", "status", "can_write_private_message", "can_see_all_posts",
+            "can_post", "universities"
+    };
 
     public static final String API_URL = "https://api.vk.com/method/";
 
@@ -227,27 +234,26 @@ class VK {
             return null;
         }
 
-        String paramsString = "";
+        List<String> paramsArray = params.keySet().stream().map(paramKey ->
+                paramKey + "=" + params.get(paramKey)).collect(Collectors.toList());
 
-        // TODO
+        String paramsString = StringUtils.join(paramsArray, "&");
 
         String url = API_URL + method + "?" +
                 paramsString +
                 "&access_token=" + accessToken;
 
         try {
-            URL url2 = new URL(url);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(url2.openStream()));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(url).openStream()));
             String line = reader.readLine();
             reader.close();
 
             return line;
 
         } catch (Exception e) {
-            // ...
+            return null;
         }
 
-        return null;
     }
 
     public List<Map<String, String>> getUsersInfo(String[] uids, String[] fields) {
@@ -271,5 +277,45 @@ class VK {
         return getUsersInfo(new String[]{userId}, USER_INFO_FIELDS_ALL).get(0);
     }
 
+    public List<Map<String, String>> getFriends(String uid, String[] fields) {
+        if (fields == null) {
+            fields = FRIENDS_FIELDS_ALL;
+        }
+
+        Map<String, String> params = new HashMap<>();
+
+        params.put("user_id", uid);
+        params.put("fields", String.join(",", fields));
+
+        JSONReader jsonReader = new JSONReader();
+
+        Object result = jsonReader.read(vkApiRequest("friends.get", params));
+
+        return (List) ((Map) result).get("response");
+    }
+
+    public List<Map<String, String>> getCurrentUserFriends(String[] fields) {
+        return getFriends(userId, fields);
+    }
+
+    public List<Map<String, String>> getAudio(String ownerId) {
+        Map<String, String> params = new HashMap<>();
+
+        params.put("owner_id", ownerId);
+
+        JSONReader jsonReader = new JSONReader();
+
+        Object resultJson = jsonReader.read(vkApiRequest("audio.get", params));
+
+        List<Map<String, String>> result = (List) ((Map) resultJson).get("response");
+
+        result.remove(0);
+
+        return result;
+    }
+
+    public List<Map<String, String>> getCurrentUserAudio() {
+        return getAudio(userId);
+    }
 
 }

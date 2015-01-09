@@ -38,7 +38,16 @@
    <bottom>
       <ListView fx:id="photosList" orientation="HORIZONTAL" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
    </bottom>
+    <left>
+        <ListView fx:id="friendsList" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+    </left>
    <right>
-      <ListView fx:id="audioList" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+       <VBox>
+        <ListView VBox.vgrow="ALWAYS" fx:id="audioList" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+           <HBox spacing="10.0" prefHeight="100.0">
+               <Button text="Play" />
+               <Button text="Stop" />
+           </HBox>
+       </VBox>
    </right>
 </BorderPane>
