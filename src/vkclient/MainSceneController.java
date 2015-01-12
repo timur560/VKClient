@@ -4,33 +4,39 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.image.ImageView;
-import javafx.scene.media.MediaView;
+import javafx.scene.layout.VBox;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import java.io.File;
-
-import javax.media.Format;
-import javax.media.Manager;
-import javax.media.MediaLocator;
-import javax.media.Player;
-import javax.media.PlugInManager;
+import javax.media.*;
 import javax.media.format.AudioFormat;
+import javax.media.protocol.DataSource;
 
 public class MainSceneController implements Initializable {
     public Label infoText;
     public ImageView avatarImage;
     public ListView<String> audioList, friendsList;
+    public VBox playerControls;
+    public Button playButton;
 
     private Map<String, String> audioItems = new HashMap<>();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        PlugInManager.addPlugIn(
+                "com.sun.media.codec.audio.mp3.JavaDecoder",
+                new Format[]{new AudioFormat(AudioFormat.MPEGLAYER3), new AudioFormat(AudioFormat.MPEG)},
+                new Format[]{new AudioFormat(AudioFormat.LINEAR)},
+                PlugInManager.CODEC
+        );
+
         VK.getInstance().loginVK();
 
         try {
@@ -61,36 +67,32 @@ public class MainSceneController implements Initializable {
         }
     }
 
-    Player mp3Player;
+    private Player player;
+    private String currentTrackUrl = "";
 
     public void playSelectedAudio(ActionEvent actionEvent) {
-        if (mp3Player != null) {
-            mp3Player.stop();
-            // mp3Player.close();
-        }
-
         String mp3Url = audioItems.get(audioList.getSelectionModel().getSelectedItem());
-        System.out.println(mp3Url);
-
-        Format input1 = new AudioFormat(AudioFormat.MPEGLAYER3);
-        Format input2 = new AudioFormat(AudioFormat.MPEG);
-        Format output = new AudioFormat(AudioFormat.LINEAR);
-
-        PlugInManager.addPlugIn(
-                "com.sun.media.codec.audio.mp3.JavaDecoder",
-                new Format[]{input1, input2},
-                new Format[]{output},
-                PlugInManager.CODEC
-        );
 
         try {
-            if (mp3Player == null) {
-                mp3Player = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+            if (player == null) {
+                player = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+                currentTrackUrl = mp3Url;
+                player.start();
+                playButton.setText("Pause");
+            } else if (player.getState() == Controller.Started) {
+                player.stop();
+                playButton.setText("Play");
             } else {
-                // mp3Player. new MediaLocator(new URL(mp3Url)));
+                if (!currentTrackUrl.equals(mp3Url)) {
+                    player.stop();
+                    player.close();
+                    player = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+                    currentTrackUrl = mp3Url;
+                }
+                player.start();
+                playButton.setText("Pause");
             }
 
-            mp3Player.start();
         } catch(Exception ex) {
             ex.printStackTrace();
         }
@@ -98,7 +100,8 @@ public class MainSceneController implements Initializable {
     }
 
     public void stopPlayAudio(ActionEvent actionEvent) {
-        mp3Player.stop();
-        // mp3Player.close();
+        player.stop();
+        player.close();
+        playButton.setText("Play");
     }
 }

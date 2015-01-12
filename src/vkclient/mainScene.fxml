@@ -45,10 +45,19 @@
    <right>
        <VBox>
         <ListView VBox.vgrow="ALWAYS" fx:id="audioList" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
-           <HBox spacing="10.0" prefHeight="100.0">
-               <Button text="Play" onAction="#playSelectedAudio" />
-               <Button text="Stop" onAction="#stopPlayAudio"/>
-           </HBox>
+           <VBox fx:id="playerControls">
+               <Label text="No track" fx:id="currentAudio" />
+               <HBox>
+                   <Label fx:id="audioPlayTime" text="00:00" />
+                   <Slider fx:id="audioPlaySlider" />
+               </HBox>
+               <HBox spacing="10.0" prefHeight="100.0">
+                   <Button fx:id="playButton" text="Play" onAction="#playSelectedAudio" />
+                   <Button text="Stop" onAction="#stopPlayAudio"/>
+                   <Label text="Vol: " />
+                   <Slider />
+               </HBox>
+           </VBox>
        </VBox>
    </right>
 </BorderPane>
