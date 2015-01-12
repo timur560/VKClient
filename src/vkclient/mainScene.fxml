@@ -44,9 +44,9 @@
     </left>
    <right>
        <VBox>
-        <ListView VBox.vgrow="ALWAYS" fx:id="audioList" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+           <ListView VBox.vgrow="ALWAYS" fx:id="audioList" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
            <VBox fx:id="playerControls">
-               <Label text="No track" fx:id="currentAudio" />
+               <Label text="No track" fx:id="currentAudioTitle" wrapText="true" prefWidth="200.0" />
                <HBox>
                    <Label fx:id="audioPlayTime" text="00:00" />
                    <Slider fx:id="audioPlaySlider" />

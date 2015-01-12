@@ -1,13 +1,18 @@
 package vkclient;
 
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -18,6 +23,9 @@ import java.util.stream.Collectors;
 import javax.media.*;
 import javax.media.format.AudioFormat;
 import javax.media.protocol.DataSource;
+import javax.media.protocol.PullBufferDataSource;
+import javax.media.protocol.PullDataSource;
+import javax.media.protocol.URLDataSource;
 
 public class MainSceneController implements Initializable {
     public Label infoText;
@@ -25,6 +33,11 @@ public class MainSceneController implements Initializable {
     public ListView<String> audioList, friendsList;
     public VBox playerControls;
     public Button playButton;
+    public Label currentAudioTitle;
+
+    private Player player;
+    private String currentTrackUrl = "";
+    DataSource dataSource;
 
     private Map<String, String> audioItems = new HashMap<>();
 
@@ -62,20 +75,88 @@ public class MainSceneController implements Initializable {
                     audioItem.get("artist") + " - " + audioItem.get("title")).collect(Collectors.toList()));
 
             audioList.setItems(audioItemsList);
+
+            audioList.getSelectionModel().selectedItemProperty().addListener(
+                new ChangeListener<String>() {
+                    @Override
+                    public void changed(ObservableValue<? extends String> observable,
+                                        String oldValue, String newValue) {
+                        if (player == null || player.getState() != Controller.Started) {
+                            currentAudioTitle.setText(newValue);
+                        }
+
+                    }
+                }
+            );
+
+            audioList.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                @Override
+                public void handle(MouseEvent mouseEvent) {
+                    if (mouseEvent.getButton().equals(MouseButton.PRIMARY)) {
+                        if (mouseEvent.getClickCount() == 2) {
+                            String mp3Url = audioItems.get(audioList.getSelectionModel().getSelectedItem());
+
+                            try {
+
+                                if (player != null) {
+                                    player.stop();
+                                    player.close();
+                                }
+
+                                if (dataSource == null) {
+                                    dataSource = new URLDataSource(new URL(mp3Url));
+                                } else {
+                                    dataSource.stop();
+                                    dataSource.disconnect();
+                                    dataSource = new URLDataSource(new URL(mp3Url));
+                                    // dataSource.setLocator(new MediaLocator(new URL(mp3Url)));
+                                }
+
+                                dataSource.connect();
+                                System.out.println(dataSource.getContentType());
+
+                                if (player == null) {
+                                    player = Manager.createRealizedPlayer(dataSource.getLocator());
+                                    // = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+                                } else {
+                                    // player.setSource(dataSource);
+                                    player.deallocate();
+                                    player = Manager.createRealizedPlayer(dataSource.getLocator());
+
+                                }
+
+                                currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem());
+                                currentTrackUrl = mp3Url;
+                                player.start();
+                                playButton.setText("Pause");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+
+                        }
+                    }
+                }
+            });
         } catch (Exception e) {
             ///
         }
     }
-
-    private Player player;
-    private String currentTrackUrl = "";
 
     public void playSelectedAudio(ActionEvent actionEvent) {
         String mp3Url = audioItems.get(audioList.getSelectionModel().getSelectedItem());
 
         try {
             if (player == null) {
-                player = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+                if (dataSource == null) {
+                    dataSource = new URLDataSource(new URL(mp3Url));
+                } else {
+                    dataSource.setLocator(new MediaLocator(new URL(mp3Url)));
+                }
+
+                player = Manager.createRealizedPlayer(dataSource);
+                // = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+
+                currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem());
                 currentTrackUrl = mp3Url;
                 player.start();
                 playButton.setText("Pause");
@@ -86,7 +167,16 @@ public class MainSceneController implements Initializable {
                 if (!currentTrackUrl.equals(mp3Url)) {
                     player.stop();
                     player.close();
-                    player = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+
+                    if (dataSource == null) {
+                        dataSource = new URLDataSource(new URL(mp3Url));
+                    } else {
+                        dataSource.setLocator(new MediaLocator(new URL(mp3Url)));
+                    }
+
+                    player.setSource(dataSource);
+
+                    currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem());
                     currentTrackUrl = mp3Url;
                 }
                 player.start();
