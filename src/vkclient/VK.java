@@ -277,7 +277,7 @@ class VK {
         return getUsersInfo(new String[]{userId}, USER_INFO_FIELDS_ALL).get(0);
     }
 
-    public List<Map<String, String>> getFriends(String uid, String[] fields) {
+    public List<FriendVKObject> getFriends(String uid, String[] fields) {
         if (fields == null) {
             fields = FRIENDS_FIELDS_ALL;
         }
@@ -289,16 +289,26 @@ class VK {
 
         JSONReader jsonReader = new JSONReader();
 
-        Object result = jsonReader.read(vkApiRequest("friends.get", params));
+        Object resultJson = jsonReader.read(vkApiRequest("friends.get", params));
 
-        return (List) ((Map) result).get("response");
+        List<FriendVKObject> result = new ArrayList<>();
+
+        for (Map friendData : (List<Map>) ((Map) resultJson).get("response")) {
+            result.add(new FriendVKObject(friendData));
+        }
+
+        return result;
     }
 
-    public List<Map<String, String>> getCurrentUserFriends(String[] fields) {
+    public List<FriendVKObject> getCurrentUserFriends(String[] fields) {
         return getFriends(userId, fields);
     }
 
-    public List<Map<String, String>> getAudio(String ownerId) {
+    public List<FriendVKObject> getCurrentUserFriends() {
+        return getFriends(userId, FRIENDS_FIELDS_ALL);
+    }
+
+    public List<AudioVKObject> getAudio(String ownerId) {
         Map<String, String> params = new HashMap<>();
 
         params.put("owner_id", ownerId);
@@ -307,14 +317,20 @@ class VK {
 
         Object resultJson = jsonReader.read(vkApiRequest("audio.get", params));
 
-        List<Map<String, String>> result = (List) ((Map) resultJson).get("response");
+        List resultList = (List) ((Map) resultJson).get("response");
 
-        result.remove(0);
+        resultList.remove(0);
+
+        List<AudioVKObject> result = new ArrayList<>();
+
+        for (Map audioData : (List<Map>) resultList) {
+            result.add(new AudioVKObject(audioData));
+        }
 
         return result;
     }
 
-    public List<Map<String, String>> getCurrentUserAudio() {
+    public List<AudioVKObject> getCurrentUserAudio() {
         return getAudio(userId);
     }
 

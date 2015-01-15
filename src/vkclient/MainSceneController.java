@@ -9,13 +9,15 @@ import javafx.event.EventHandler;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
+import javafx.util.Callback;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,17 +25,17 @@ import java.util.stream.Collectors;
 import javax.media.*;
 import javax.media.format.AudioFormat;
 import javax.media.protocol.DataSource;
-import javax.media.protocol.PullBufferDataSource;
-import javax.media.protocol.PullDataSource;
 import javax.media.protocol.URLDataSource;
 
 public class MainSceneController implements Initializable {
-    public Label infoText;
     public ImageView avatarImage;
-    public ListView<String> audioList, friendsList;
+    public ListView<VKObject> audioList, friendsList;
     public VBox playerControls;
     public Button playButton;
     public Label currentAudioTitle;
+
+    public Label infoName;
+    public Label infoNickname;
 
     private Player player;
     private String currentTrackUrl = "";
@@ -54,92 +56,130 @@ public class MainSceneController implements Initializable {
 
         try {
             Map<String, String> userInfo = VK.getInstance().getCurrentUserInfo();
-            infoText.setText(userInfo.get("first_name") + " " + userInfo.get("last_name"));
+            infoName.setText(userInfo.get("first_name") + " " + userInfo.get("last_name"));
+            infoNickname.setText(userInfo.get("nickname"));
+            avatarImage.setImage(new Image(userInfo.get("photo_200_orig")));
 
-            // friends list
-            List<Map<String, String>> friends = VK.getInstance().getCurrentUserFriends(new String[]{"first_name", "last_name"});
-            ObservableList<String> friendsItems = FXCollections.observableArrayList();
-            friendsItems.addAll(friends.stream().map(friend ->
-                    friend.get("first_name") + " " + friend.get("last_name")).collect(Collectors.toList()));
-            friendsList.setItems(friendsItems);
+            initAudioListView();
 
-            // audios list
-            List<Map<String, String>> audio = VK.getInstance().getCurrentUserAudio();
+            initFriendsListView();
 
-            for (Map<String, String> audioItem : audio) {
-                audioItems.put(audioItem.get("artist") + " - " + audioItem.get("title"), audioItem.get("url"));
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-            ObservableList<String> audioItemsList = FXCollections.observableArrayList();
-            audioItemsList.addAll(audio.stream().map(audioItem ->
-                    audioItem.get("artist") + " - " + audioItem.get("title")).collect(Collectors.toList()));
+    public void initFriendsListView() {
+        List<FriendVKObject> friendItems = VK.getInstance().getCurrentUserFriends(); //new String[]{"first_name", "last_name"});
 
-            audioList.setItems(audioItemsList);
+        ObservableList<VKObject> friendsItemsList = FXCollections.observableArrayList(friendItems);
 
-            audioList.getSelectionModel().selectedItemProperty().addListener(
-                new ChangeListener<String>() {
+        friendsList.setItems(friendsItemsList);
+
+        friendsList.setCellFactory(new Callback<ListView<VKObject>, ListCell<VKObject>>() {
+            @Override
+            public ListCell<VKObject> call(ListView<VKObject> param) {
+                ListCell<VKObject> cell = new ListCell<VKObject>(){
                     @Override
-                    public void changed(ObservableValue<? extends String> observable,
-                                        String oldValue, String newValue) {
+                    protected void updateItem(VKObject vkItem, boolean bln) {
+                        super.updateItem(vkItem, bln);
+                        if (vkItem != null) {
+                            setText(vkItem.getVisibleText());
+                        }
+                    }
+
+                };
+
+                return cell;
+            }
+        });
+    }
+
+    public void initAudioListView() {
+        List<AudioVKObject> audioItems = VK.getInstance().getCurrentUserAudio();
+        ObservableList<VKObject> audioItemsList = FXCollections.observableArrayList(audioItems);
+        audioList.setItems(audioItemsList);
+
+        audioList.setCellFactory(new Callback<ListView<VKObject>, ListCell<VKObject>>() {
+            @Override
+            public ListCell<VKObject> call(ListView<VKObject> param) {
+                ListCell<VKObject> cell = new ListCell<VKObject>(){
+                    @Override
+                    protected void updateItem(VKObject audioItem, boolean bln) {
+                        super.updateItem(audioItem, bln);
+                        if (audioItem != null) {
+                            setText(audioItem.getVisibleText());
+                        }
+                    }
+
+                };
+
+                return cell;
+            }
+        });
+
+        audioList.getSelectionModel().selectedItemProperty().addListener(
+                new ChangeListener<VKObject>() {
+                    @Override
+                    public void changed(ObservableValue<? extends VKObject> observable,
+                                        VKObject oldValue, VKObject newValue) {
                         if (player == null || player.getState() != Controller.Started) {
-                            currentAudioTitle.setText(newValue);
+                            currentAudioTitle.setText(newValue.getVisibleText());
                         }
 
                     }
                 }
-            );
+        );
 
-            audioList.setOnMouseClicked(new EventHandler<MouseEvent>() {
-                @Override
-                public void handle(MouseEvent mouseEvent) {
-                    if (mouseEvent.getButton().equals(MouseButton.PRIMARY)) {
-                        if (mouseEvent.getClickCount() == 2) {
-                            String mp3Url = audioItems.get(audioList.getSelectionModel().getSelectedItem());
+        audioList.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+                if (mouseEvent.getButton().equals(MouseButton.PRIMARY)) {
+                    if (mouseEvent.getClickCount() == 2) {
+                        String mp3Url = audioList.getSelectionModel().getSelectedItem().get("url");
 
-                            try {
+                        try {
 
-                                if (player != null) {
-                                    player.stop();
-                                    player.close();
-                                }
-
-                                if (dataSource == null) {
-                                    dataSource = new URLDataSource(new URL(mp3Url));
-                                } else {
-                                    dataSource.stop();
-                                    dataSource.disconnect();
-                                    dataSource = new URLDataSource(new URL(mp3Url));
-                                    // dataSource.setLocator(new MediaLocator(new URL(mp3Url)));
-                                }
-
-                                dataSource.connect();
-                                System.out.println(dataSource.getContentType());
-
-                                if (player == null) {
-                                    player = Manager.createRealizedPlayer(dataSource.getLocator());
-                                    // = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
-                                } else {
-                                    // player.setSource(dataSource);
-                                    player.deallocate();
-                                    player = Manager.createRealizedPlayer(dataSource.getLocator());
-
-                                }
-
-                                currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem());
-                                currentTrackUrl = mp3Url;
-                                player.start();
-                                playButton.setText("Pause");
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                            if (player != null) {
+                                player.stop();
+                                player.close();
                             }
 
+                            if (dataSource == null) {
+                                dataSource = new URLDataSource(new URL(mp3Url));
+                            } else {
+                                dataSource.stop();
+                                dataSource.disconnect();
+                                dataSource = new URLDataSource(new URL(mp3Url));
+                                // dataSource.setLocator(new MediaLocator(new URL(mp3Url)));
+                            }
+
+                            dataSource.connect();
+                            System.out.println(dataSource.getContentType());
+
+                            if (player == null) {
+                                player = Manager.createRealizedPlayer(dataSource.getLocator());
+                                // = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
+                            } else {
+                                // player.setSource(dataSource);
+                                player.deallocate();
+                                player = Manager.createRealizedPlayer(dataSource.getLocator());
+
+                            }
+
+                            currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem().getVisibleText());
+                            currentTrackUrl = mp3Url;
+                            player.start();
+                            playButton.setText("Pause");
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
+
                     }
                 }
-            });
-        } catch (Exception e) {
-            ///
-        }
+            }
+        });
+
     }
 
     public void playSelectedAudio(ActionEvent actionEvent) {
@@ -156,7 +196,7 @@ public class MainSceneController implements Initializable {
                 player = Manager.createRealizedPlayer(dataSource);
                 // = Manager.createRealizedPlayer(new MediaLocator(new URL(mp3Url)));
 
-                currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem());
+                currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem().getVisibleText());
                 currentTrackUrl = mp3Url;
                 player.start();
                 playButton.setText("Pause");
@@ -176,7 +216,7 @@ public class MainSceneController implements Initializable {
 
                     player.setSource(dataSource);
 
-                    currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem());
+                    currentAudioTitle.setText(audioList.getSelectionModel().getSelectedItem().getVisibleText());
                     currentTrackUrl = mp3Url;
                 }
                 player.start();
