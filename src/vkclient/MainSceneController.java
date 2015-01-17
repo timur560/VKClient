@@ -20,7 +20,6 @@ import javafx.util.Callback;
 
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import javax.media.*;
 import javax.media.format.AudioFormat;
@@ -70,7 +69,7 @@ public class MainSceneController implements Initializable {
     }
 
     public void initFriendsListView() {
-        List<FriendVKObject> friendItems = VK.getInstance().getCurrentUserFriends(); //new String[]{"first_name", "last_name"});
+        List<UserVKObject> friendItems = VK.getInstance().getCurrentUserFriends(); //new String[]{"first_name", "last_name"});
 
         ObservableList<VKObject> friendsItemsList = FXCollections.observableArrayList(friendItems);
 

@@ -10,7 +10,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.util.Pair;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -19,12 +18,9 @@ import org.jsoup.nodes.Document;
 import org.stringtree.json.JSONReader;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -277,7 +273,7 @@ class VK {
         return getUsersInfo(new String[]{userId}, USER_INFO_FIELDS_ALL).get(0);
     }
 
-    public List<FriendVKObject> getFriends(String uid, String[] fields) {
+    public List<UserVKObject> getFriends(String uid, String[] fields) {
         if (fields == null) {
             fields = FRIENDS_FIELDS_ALL;
         }
@@ -291,20 +287,20 @@ class VK {
 
         Object resultJson = jsonReader.read(vkApiRequest("friends.get", params));
 
-        List<FriendVKObject> result = new ArrayList<>();
+        List<UserVKObject> result = new ArrayList<>();
 
         for (Map friendData : (List<Map>) ((Map) resultJson).get("response")) {
-            result.add(new FriendVKObject(friendData));
+            result.add(new UserVKObject(friendData));
         }
 
         return result;
     }
 
-    public List<FriendVKObject> getCurrentUserFriends(String[] fields) {
+    public List<UserVKObject> getCurrentUserFriends(String[] fields) {
         return getFriends(userId, fields);
     }
 
-    public List<FriendVKObject> getCurrentUserFriends() {
+    public List<UserVKObject> getCurrentUserFriends() {
         return getFriends(userId, FRIENDS_FIELDS_ALL);
     }
 

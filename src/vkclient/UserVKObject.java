@@ -5,9 +5,9 @@ import java.util.Map;
 /**
  * Created by timur on 15.01.15.
  */
-public class FriendVKObject extends VKObject {
+public class UserVKObject extends VKObject {
 
-    public FriendVKObject(Map<String, String> values) {
+    public UserVKObject(Map<String, String> values) {
         super(values);
     }
 
